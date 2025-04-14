@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cyber Threat Intelligence Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            background: linear-gradient(to right, #2c3e50, #4ca1af);
+            font-family: 'Poppins', sans-serif;
+            color: #fff;
+        }
+        .sidebar {
+            width: 280px;
+            height: 100vh;
+            position: fixed;
+            background: #1b2838;
+            color: white;
+            padding-top: 20px;
+            transition: 0.3s;
+        }
+        .sidebar a {
+            padding: 15px;
+            display: block;
+            color: white;
+            text-decoration: none;
+            font-size: 1.2rem;
+        }
+        .sidebar a:hover {
+            background: #4ca1af;
+            border-left: 5px solid #fff;
+        }
+        .content {
+            margin-left: 300px;
+            padding: 30px;
+        }
+        .card {
+            border-radius: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(10px);
+        }
+        table {
+            color: #fff;
+        }
+        .btn-danger {
+            border-radius: 50px;
+            padding: 8px 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <h3 class="text-center py-3">🔒 Threat Dashboard</h3>
+        <a href="#">📊 Home</a>
+        <a href="#">📜 Threat Reports</a>
+        <a href="#">⚙️ Settings</a>
+    </div>
+    <div class="content">
+        <h2 class="text-center">Cyber Threat Intelligence Dashboard</h2>
+        <div class="container mt-3">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        </div>
+        
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <div class="card p-4">
+                    <h4>Recent Logs</h4>
+                    <table class="table table-dark table-striped">
+                        <thead>
+                            <tr>
+                                <th>IP</th>
+                                <th>Page</th>
+                                <th>Timestamp</th>
+                            </tr>
+                        </thead>
+                        <tbody id="logsTable"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card p-4">
+                    <h4>Blocked IPs</h4>
+                    <table class="table table-dark table-striped">
+                        <thead>
+                            <tr>
+                                <th>IP</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="blockedIPsTable"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="row mt-4">
+            <div class="col-md-12">
+                <div class="card p-4">
+                    <h4 class="text-center">Threat Activity</h4>
+                    <canvas id="threatChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        function fetchLogs() {
+            $.get("/get_logs", function (data) {
+                $("#logsTable").empty();
+                data.logs.forEach(log => {
+                    $("#logsTable").append(`<tr><td>${log.id}</td><td>${log.message}</td><td>${log.timestamp}</td></tr>`);
+                });
+            });
+        }
+        function fetchBlockedIPs() {
+            $.get("/get_blocked_ips", function (data) {
+                $("#blockedIPsTable").empty();
+                data.blocked_ips.forEach(ip => {
+                    $("#blockedIPsTable").append(`<tr><td>${ip.ip_address}</td><td><button onclick="unblockIP('${ip.ip_address}')" class="btn btn-danger">Unblock</button></td></tr>`);
+                });
+            });
+        }
+        function renderThreatChart() {
+            var ctx = document.getElementById("threatChart").getContext("2d");
+            var chart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ["High", "Medium", "Low"],
+                    datasets: [{
+                        label: "Threat Levels",
+                        data: [12, 19, 5],
+                        backgroundColor: ["#e74c3c", "#f39c12", "#2ecc71"]
+                    }]
+                }
+            });
+        }
+        function unblockIP(ip) {
+    $.ajax({
+        url: `/unblock/${ip}`,
+        type: "POST",
+        success: function (response) {
+            alert(response.message); // Show success message
+            fetchBlockedIPs(); // Refresh the table
+        },
+        error: function (xhr) {
+            alert("Error: " + xhr.responseText);
+        }
+    });
+}
+
+        setInterval(fetchLogs, 7000);
+        setInterval(fetchBlockedIPs, 7000);
+        fetchLogs();
+        fetchBlockedIPs();
+        renderThreatChart();
+    </script>
+</body>
+</html>
